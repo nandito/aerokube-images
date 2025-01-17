@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,16 +40,52 @@ func ffmpegStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	command := fmt.Sprintf(
-		"ffmpeg -f pulse -thread_queue_size 2048 -i default -y -f x11grab -video_size %s -r %s %s -i %s -codec:v %s %s -filter:v \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" /home/selenium/videooutput/%s",
-		params.VideoSize, params.FrameRate, params.InputOptions, params.Display, params.Codec, params.Preset, params.FileName,
-	)
+    // save something to /Users/nandito/Workspace/oss/aerokube/images/selenium/base/cmdserver
+    command := "ffmpeg -f lavfi -i anoisesrc=d=0:c=pink -c:a pcm_s16le /Users/nandito/Workspace/oss/aerokube/images/selenium/base/cmdserver/output.wav"
+	// command := fmt.Sprintf(
+	// 	"ffmpeg -f pulse -thread_queue_size 2048 -i default -y -f x11grab -video_size %s -r %s %s -i %s -codec:v %s %s -filter:v \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" /home/selenium/videooutput/%s",
+	// 	params.VideoSize, params.FrameRate, params.InputOptions, params.Display, params.Codec, params.Preset, params.FileName,
+	// )
 
 	cmd := exec.Command("bash", "-c", command)
-	if err := cmd.Start(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to start FFmpeg: %v", err), http.StatusInternalServerError)
-		return
-	}
+	// if err := cmd.Start(); err != nil {
+	// 	http.Error(w, fmt.Sprintf("Failed to start FFmpeg: %v", err), http.StatusInternalServerError)
+	// 	return
+	// }
+
+    // Create pipes to capture stdout and stderr
+    stdoutPipe, err := cmd.StdoutPipe()
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Failed to create stdout pipe: %v", err), http.StatusInternalServerError)
+        return
+    }
+
+    stderrPipe, err := cmd.StderrPipe()
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Failed to create stderr pipe: %v", err), http.StatusInternalServerError)
+        return
+    }
+
+    // Start the command
+    if err := cmd.Start(); err != nil {
+        http.Error(w, fmt.Sprintf("Failed to start FFmpeg: %v", err), http.StatusInternalServerError)
+        return
+    }
+
+    // Log output in goroutines
+    go func() {
+        scanner := bufio.NewScanner(stdoutPipe)
+        for scanner.Scan() {
+            fmt.Printf("[FFmpeg stdout] %s\n", scanner.Text())
+        }
+    }()
+
+    go func() {
+        scanner := bufio.NewScanner(stderrPipe)
+        for scanner.Scan() {
+            fmt.Printf("[FFmpeg stderr] %s\n", scanner.Text())
+        }
+    }()
 
 	ffmpegCmd = cmd
 	w.WriteHeader(http.StatusOK)
