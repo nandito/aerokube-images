@@ -25,7 +25,7 @@ Moved to: http://aerokube.com/images/latest/#_building_images
 $ go install github.com/markbates/pkger/cmd/pkger@latest
 $ go generate github.com/aerokube/images
 $ go build
-$ ./images chrome -b 132.0.6834.83 -d 132.0.6834.83 -t selenoid/chrome:132.0/images chrome
+$ ./images chrome -b 132.0.6834.83 -d 132.0.6834.83 -t selenoid/chrome:132.0
 ```
 
 Use `--platform=linux/amd64` to build images on M1 Mac in the
