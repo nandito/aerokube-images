@@ -11,6 +11,8 @@ RUN \
     GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
     upx /devtools/devtools
 
+# use linux/arm64 for M1
+# FROM --platform=linux/amd64 selenoid/dev_chrome:$VERSION
 FROM selenoid/dev_chrome:$VERSION
 
 ENV DBUS_SESSION_BUS_ADDRESS=/dev/null
