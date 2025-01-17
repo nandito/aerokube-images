@@ -17,6 +17,7 @@ RUN \
     libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 \
     libxss1 libxtst6 ca-certificates fonts-liberation libnss3 lsb-release \
     xdg-utils
+    # xdg-utils ffmpeg pulseaudio-utils
 
 # https://stackoverflow.com/a/78880055
 RUN CHROME_VERSION=$(curl -sSL https://googlechromelabs.github.io/chrome-for-testing/ | awk -F 'Version:' '/Stable/ {print $2}' | awk '{print $1}' | sed 's/<code>//g; s/<\/code>//g') && \

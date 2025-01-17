@@ -10,25 +10,46 @@ if [ -n "$VERBOSE" ]; then
 fi
 
 clean() {
+  # if [ -n "$FFMPEG_PID" ]; then
+  #   echo "Stopping FFmpeg..."
+  #   kill -SIGINT "$FFMPEG_PID"  # Send SIGINT for graceful termination
+  #   echo "Waiting for FFmpeg to finish..."
+  #   wait "$FFMPEG_PID"  # Wait for FFmpeg to finalize
+  #   if kill -0 "$FFMPEG_PID" 2>/dev/null; then
+  #     echo "FFmpeg is taking too long, forcefully terminating..."
+  #     kill -SIGKILL "$FFMPEG_PID"
+  #   fi
+  # fi
   if [ -n "$FILESERVER_PID" ]; then
+    echo "Stopping fileserver..."
     kill -TERM "$FILESERVER_PID"
   fi
+  if [ -n "$CMDSERVER_PID" ]; then
+    echo "Stopping cmdserver..."
+    kill -TERM "$CMDSERVER_PID"
+  fi
   if [ -n "$XSELD_PID" ]; then
+    echo "Stopping xseld..."
     kill -TERM "$XSELD_PID"
   fi
   if [ -n "$XVFB_PID" ]; then
+    echo "Stopping Xvfb..."
     kill -TERM "$XVFB_PID"
   fi
   if [ -n "$DRIVER_PID" ]; then
+    echo "Stopping ChromeDriver..."
     kill -TERM "$DRIVER_PID"
   fi
   if [ -n "$X11VNC_PID" ]; then
+    echo "Stopping x11vnc..."
     kill -TERM "$X11VNC_PID"
   fi
   if [ -n "$DEVTOOLS_PID" ]; then
+    echo "Stopping devtools..."
     kill -TERM "$DEVTOOLS_PID"
   fi
   if [ -n "$PULSE_PID" ]; then
+    echo "Stopping PulseAudio..."
     kill -TERM "$PULSE_PID"
   fi
 }
@@ -66,6 +87,9 @@ FILESERVER_PID=$!
 /usr/bin/devtools &
 DEVTOOLS_PID=$!
 
+/usr/bin/cmdserver &
+CMDSERVER_PID=$!
+
 DISPLAY="$DISPLAY" /usr/bin/xseld &
 XSELD_PID=$!
 
@@ -90,6 +114,27 @@ until [ $retcode -eq 0 ]; do
   fi
 done
 
+# Video recording
+
+VIDEO_SIZE=${VIDEO_SIZE:-"1920x1080"}
+BROWSER_CONTAINER_NAME=${BROWSER_CONTAINER_NAME:-"browser"}
+DISPLAY=${DISPLAY:-"99"}
+FILE_NAME=${FILE_NAME:-"video-$(cat /proc/sys/kernel/random/uuid)-$(date +%s).mp4"}
+FRAME_RATE=${FRAME_RATE:-"24"}
+# FRAME_RATE=${FRAME_RATE:-"12"}
+CODEC=${CODEC:-"libx264"}
+PRESET=${PRESET:-""}
+if [ "$CODEC" == "libx264" -a -n "$PRESET" ]; then
+    PRESET="-preset $PRESET"
+fi
+INPUT_OPTIONS=${INPUT_OPTIONS:-""}
+HIDE_CURSOR=${HIDE_CURSOR:-""}
+if [ -n "$HIDE_CURSOR" ]; then
+    INPUT_OPTIONS="$INPUT_OPTIONS -draw_mouse 0"
+fi
+
+# End of video recording
+
 if [ "$ENABLE_VNC" == "true" ]; then
     x11vnc -display "$DISPLAY" -passwd selenoid -shared -forever -loop500 -rfbport 5900 -rfbportv6 5900 -logfile /dev/null &
     X11VNC_PID=$!
@@ -97,5 +142,23 @@ fi
 
 DISPLAY="$DISPLAY" /usr/bin/chromedriver --port=4444 --allowed-ips='' --allowed-origins='*' ${DRIVER_ARGS} &
 DRIVER_PID=$!
+
+# Wait for ChromeDriver to start
+echo "Waiting for ChromeDriver to start..."
+while ! pgrep -f "chromedriver" > /dev/null; do
+    sleep 0.5
+done
+echo "ChromeDriver is running."
+
+mkdir -p /home/selenium/videooutput
+
+# problem 1
+# the container stops too early so ffmpeg is not able to finish the video
+# problem 2
+# chrome page crashes, probably due to resource exhaustion
+
+# ffmpeg -f pulse -thread_queue_size 2048 -i default -y -f x11grab -video_size ${VIDEO_SIZE} -r ${FRAME_RATE} ${INPUT_OPTIONS} -i ${DISPLAY} -codec:v ${CODEC} ${PRESET} -filter:v "pad=ceil(iw/2)*2:ceil(ih/2)*2" "/home/selenium/videooutput/$FILE_NAME" &
+# FFMPEG_PID=$!
+# echo "FFmpeg is running on PID $FFMPEG_PID."
 
 wait

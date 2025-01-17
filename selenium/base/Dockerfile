@@ -57,6 +57,7 @@ RUN \
     xvfb \
     pulseaudio \
     fluxbox \
+    ffmpeg \
     x11vnc \
     feh \
     wmctrl \
